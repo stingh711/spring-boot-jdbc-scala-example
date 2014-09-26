@@ -1,0 +1,7 @@
+/build
+/out
+pdms-api.iml
+pdms-api.ipr
+pdms-api.iws
+/target
+/.gradle

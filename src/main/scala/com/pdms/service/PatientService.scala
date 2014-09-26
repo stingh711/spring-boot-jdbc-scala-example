@@ -1,11 +1,13 @@
 package com.pdms.service
 
 import org.springframework.stereotype.Component
-import org.springframework.jdbc.core.{PreparedStatementCreator, RowMapper, JdbcTemplate}
+import org.springframework.jdbc.core.{RowMapper, JdbcTemplate}
 import org.springframework.beans.factory.annotation.Autowired
 import com.pdms.model.Patient
-import java.sql.{PreparedStatement, Connection, ResultSet}
-import org.springframework.jdbc.support.GeneratedKeyHolder
+import java.sql.ResultSet
+import javax.sql.DataSource
+import org.springframework.jdbc.core.simple.SimpleJdbcInsert
+import collection.JavaConversions._
 
 /**
  * Created with IntelliJ IDEA.
@@ -15,25 +17,22 @@ import org.springframework.jdbc.support.GeneratedKeyHolder
  * To change this template use File | Settings | File Templates.
  */
 @Component
-class PatientService @Autowired() (val jdbcTemplate: JdbcTemplate) {
+class PatientService @Autowired() (val dataSource: DataSource) {
+  private val jdbcTemplate = new JdbcTemplate(dataSource)
+  private val insertPatient = new SimpleJdbcInsert(dataSource).withTableName("patient").usingGeneratedKeyColumns("id")
+
   def getAll = jdbcTemplate.query("select * from patient", PatientMapper)
 
   def get(id: Long): Patient = jdbcTemplate.queryForObject("select * from patient where id = ?", PatientMapper , java.lang.Long.valueOf(id))
 
   def getByName(name: String): Patient = jdbcTemplate.queryForObject("select * from patient where name = ?", PatientMapper , name)
 
-  def insert(patient: Patient) = {
-    val sql = "insert into patient (name, age) values (?, ?)"
-    val keyHolder = new GeneratedKeyHolder()
-    jdbcTemplate.update(new PreparedStatementCreator {
-      def createPreparedStatement(con: Connection): PreparedStatement = {
-        val ps = con.prepareStatement(sql, Array("id"))
-        ps.setString(1, patient.name)
-        ps.setInt(2, patient.age)
-        ps
-      }
-    }, keyHolder)
-    keyHolder.getKey
+  def insert(patient: Patient): Long = {
+    val parameters: Map[String, AnyRef] = Map("name" -> patient.name, "age" -> java.lang.Integer.valueOf(patient.age))
+
+    //Need to import collection.JavaConversions._ to make this line work
+    val id = insertPatient.executeAndReturnKey(parameters)
+    id.longValue()
   }
 }
 
